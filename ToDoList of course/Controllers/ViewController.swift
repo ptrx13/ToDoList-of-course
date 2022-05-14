@@ -10,10 +10,9 @@ import CoreData
 
 class ToDoListViewController: UITableViewController {
     
+    var coreDataManager = CoreDataManager()
     var itemArray = [Item]()
     let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
-    
-    let defaults = UserDefaults.standard
     
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -46,14 +45,20 @@ class ToDoListViewController: UITableViewController {
         
         itemArray[indexPath.row].done = !itemArray[indexPath.row].done
         
-        //        context.delete(itemArray[indexPath.row])
-        //        itemArray.remove(at: indexPath.row)
-        
-        
-        saveItems()
+        coreDataManager.saveContext(context: context, tableView: tableView)
         
         tableView.deselectRow(at: indexPath, animated: true)
         
+    }
+    
+    override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
+        
+        context.delete(itemArray[indexPath.row])
+        itemArray.remove(at: indexPath.row)
+        let indexPaths = [indexPath]
+        tableView.deleteRows(at: indexPaths, with: .automatic)
+        //self.saveItems()
+        coreDataManager.saveContext(context: context, tableView: tableView)
     }
     
     // MARK: - Add item
@@ -63,7 +68,9 @@ class ToDoListViewController: UITableViewController {
         
         let alert = UIAlertController(title: "Новая задача", message: "", preferredStyle: .alert)
         
-        let action = UIAlertAction(title: "Добавить", style: .default) { (action) in
+        let cancelAction = UIAlertAction(title: "Отмена", style: .default, handler: nil)
+        
+        let addAction = UIAlertAction(title: "Добавить", style: .default) { (action) in
             
             
             let newItem = Item(context: self.context)
@@ -71,31 +78,22 @@ class ToDoListViewController: UITableViewController {
             newItem.done = false
             self.itemArray.append(newItem)
             
-            self.saveItems()
+            self.coreDataManager.saveContext(context: self.context, tableView: self.tableView)
         }
         
         alert.addTextField { (alertTF) in
             alertTF.placeholder = "Добавить новую задачу"
             textField = alertTF
         }
-        alert.addAction(action)
+        alert.addAction(addAction)
+        alert.addAction(cancelAction)
         
         present(alert, animated: true, completion: nil)
     }
     
-    //MARK: - Model Manupulation Methods
+    //MARK: - Load items
     
-    func saveItems() {
-        
-        do {
-            try context.save()
-        } catch {
-            print("error saving context \(error)")
-        }
-        
-        self.tableView.reloadData()
-    }
-    
+    // выгружаем данные
     func loadItems() {
         let request : NSFetchRequest<Item> = Item.fetchRequest()
         do {
@@ -105,4 +103,3 @@ class ToDoListViewController: UITableViewController {
         }
     }
 }
-
